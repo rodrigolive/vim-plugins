@@ -10,7 +10,7 @@
 "       Company:  FH Südwestfalen, Iserlohn
 "       Version:  1.0
 "       Created:  16.12.2008 18:16:55
-"      Revision:  $Id: perlsupportregex.vim,v 1.23 2010/11/22 20:15:40 mehner Exp $
+"      Revision:  $Id: perlsupportregex.vim,v 1.26 2011/10/07 18:22:20 mehner Exp $
 "       License:  Copyright 2008-2010 Dr. Fritz Mehner
 "===============================================================================
 "
@@ -48,6 +48,21 @@ function! perlsupportregex#Perl_RegexExplain( mode )
     echomsg "*** Your version of Vim was not compiled with Perl interface. ***"
     return
   endif
+
+	if g:Perl_PerlRegexAnalyser	== 'no'
+    perl <<INITIALIZE_PERL_INTERFACE
+		#
+		# ---------------------------------------------------------------
+		# Perl_RegexExplain (function)
+		# try to load the regex analyzer module; report failure
+		# ---------------------------------------------------------------
+		eval "require YAPE::Regex::Explain";
+		if ( !$@ ) {
+			VIM::DoCommand("let g:Perl_PerlRegexAnalyser = 'yes'");
+		}
+		#
+INITIALIZE_PERL_INTERFACE
+	endif
 
   if g:Perl_PerlRegexAnalyser != 'yes'
     echomsg "*** The Perl module YAPE::Regex::Explain can not be found. ***"
@@ -114,12 +129,12 @@ endfunction    " ----------  end of function Perl_RegexCodeEvaluation  ---------
 "   item : regexp | string
 "   mode : n | v
 "------------------------------------------------------------------------------
-function! perlsupportregex#Perl_RegexPick ( item, mode )
+function! perlsupportregex#Perl_RegexPick ( item, mode ) range
   "
   " the complete line; remove leading and trailing whitespaces
   "
   if a:mode == 'n'
-    let line  = getline(line("."))
+    let line  = join( getline( a:firstline, a:lastline ), "\n" )
     if  s:MSWIN
       " MSWIN : copy item to the yank-register, remove trailing CR
       let line  = substitute( line, "\n$", '', '' )
@@ -222,6 +237,7 @@ function! perlsupportregex#Perl_RegexVisualize( )
   "
   " remove content if any:
   silent normal ggdG
+	let s:Perl_PerlRegexMatch                 = ''
 
   perl <<EOF_regex_evaluate
 
@@ -508,6 +524,7 @@ EOF_regex_evaluate
   " Vim regex pattern (range 33 ... 126 or '!' ... '~').
   "-------------------------------------------------------------------------------
   exe ":match none"
+
   if s:Perl_PerlRegexMatch != ''
     let nr    = char2nr('!')
     let tilde = char2nr('~')
